@@ -10,3 +10,4 @@ class Summarizer:
         inputs = self.tokenizer(text, return_tensors="pt", max_length=4096, truncation=True)
         summary_ids = self.model.generate(inputs["input_ids"], max_length=250, min_length=200)
         return self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    print("hello")
