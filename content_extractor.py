@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 class ContentExtractor:
 
-    def scrape_nyt_article(url):
+    def scrape_nyt_article(self, url):
         # Set custom headers including a User-Agent
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -32,7 +32,7 @@ class ContentExtractor:
             print(f"An error occurred: {e}")
             return None
 
-    def parse_article(content):
+    def parse_article(self, content):
         # Parse the article content using BeautifulSoup
         soup = BeautifulSoup(content, 'html.parser')
 

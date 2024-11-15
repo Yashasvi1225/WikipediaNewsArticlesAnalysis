@@ -5,6 +5,7 @@ class Summarizer:
     def __init__(self) -> None:
         self.tokenizer = LEDTokenizer.from_pretrained(self.model_name)
         self.model = LEDForConditionalGeneration.from_pretrained(self.model_name)
+        # self.model = None
 
     def summarize_led(self, text):
         inputs = self.tokenizer(text, return_tensors="pt", max_length=4096, truncation=True)

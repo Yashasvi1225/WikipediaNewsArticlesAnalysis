@@ -8,6 +8,7 @@ import logging
 from content_extractor import ContentExtractor
 from summarization import Summarizer
 
+from langdetect import detect, DetectorFactory
 
 class PageNews:
     """
@@ -23,19 +24,22 @@ class PageNews:
     def __init__(self, summarizer, page_name):
         self.page_name = page_name
         self.content_extractor = ContentExtractor()
+        self.articles = []
         if summarizer == None:
             return "Could not find a Summerizer"
+        else:
+            self.summerizer = summarizer
 
-    def make_newsapi_url(page, date):
-        base_url = f"https://newsapi.org/v2/everything?q={page}&from={date}&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+    def make_newsapi_url(self,page, date):
+        base_url = f"https://newsapi.org/v2/everything?q={page}&from={date}&sortBy=publishedAt&apiKey={self.NEWS_API_KEY}"
         return base_url
 
-    def make_currentsapi_url(page):
+    def make_currentsapi_url(self,page):
         base_url = f"https://api.currentsapi.services/v1/search?keywords={page}&language=en"
         return ""
     
-    def make_marketaux_url(page):
-        base_url = f"https://api.marketaux.com/v1/news/all?symbols=TSLA%2CAMZN%2CMSFT&filter_entities=true&language=en&api_token={MARKET_AUX_API_KEY}"
+    def make_marketaux_url(self,page):
+        base_url = f"https://api.marketaux.com/v1/news/all?symbols=TSLA%2CAMZN%2CMSFT&filter_entities=true&language=en&api_token={self.MARKET_AUX_API_KEY}"
         return base_url
 
     
@@ -60,7 +64,8 @@ class PageNews:
         if isinstance(data, dict):
             for key, value in data.items():
                 if key == 'url' and isinstance(value, str):
-                    urls.append(value)
+                     if detect(value) == "en":
+                        urls.append(value)
                 else:
                     urls.extend(self.fetch_urls(value))
         elif isinstance(data, list):
@@ -72,9 +77,25 @@ class PageNews:
     def fetch_news_article(self, top_k=100):
         news_api_url = self.make_newsapi_url(self.page_name, '2024-10-14')
         marketaux_api_url = self.make_marketaux_url(self.page_name)
-        api_response_objects = self.fetch_api_responses([news_api_url, marketaux_api_url])
+        # print("Fetching data from APIs...", news_api_url, marketaux_api_url)
+        api_urls = [
+            news_api_url,
+            marketaux_api_url
+        ]
+        api_response_objects = []
+        for api_url in api_urls:
+            try:
+                logging.info(f"Fetching data from API: {api_url}")
+                response = requests.get(api_url)
+                response.raise_for_status()  # Raises an HTTPError for bad responses
+                api_response_objects.append(response.json())
+                logging.info(f"Data fetched successfully from {api_url}")
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Failed to fetch data from {api_url}: {e}")
+                api_response_objects.append({"error": str(e)})
+
         urls = self.fetch_urls(api_response_objects)
-        articles = [
+        self.articles = [
             {
                 "url": url,
                 "title": self.content_extractor.fetch_content(url)[0],
@@ -82,7 +103,10 @@ class PageNews:
             } 
             for url in urls[:top_k]
         ]
-        return json.dumps(articles, indent=2) 
+        print("Fetched data from APIs...")
+        print(self.articles)
+
+        return json.dumps(self.articles, indent=2) 
     
     def fetch_article_summary(self, url):
         # Assuming 'articles' is your JSON array of articles
@@ -94,18 +118,19 @@ class PageNews:
             content = selected_article['content']
             
             # generate summary
-            summary = self.summerizer.generate_summary(f"""{title} \n {content}""")
+            summary = self.summerizer.summarize_led(f"""{title} \n {content}""")
+            selected_article['summary'] = summary
             return summary
         else:
             return "URL not present in the database. Will have to parse and summarize ad hoc."
 
     def fetch_page_summary(self):
-        if self.page_sumamry != "":
+        if self.page_summary != "":
             return self.page_summary
         else:
             # Join all summaries into a single string
             joined_summary = "\n".join(article['summary'] for article in self.articles)
-            self.page_summary = self.summerizer.generate_summary(joined_summary)
+            self.page_summary = self.summerizer.summarize_led(joined_summary)
             return self.page_summary
 
 
