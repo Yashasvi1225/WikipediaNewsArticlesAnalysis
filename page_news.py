@@ -64,8 +64,8 @@ class PageNews:
         if isinstance(data, dict):
             for key, value in data.items():
                 if key == 'url' and isinstance(value, str):
-                     if detect(value) == "en":
-                        urls.append(value)
+                    #  if detect(value) == "en":
+                    urls.append(value)
                 else:
                     urls.extend(self.fetch_urls(value))
         elif isinstance(data, list):
