@@ -1,4 +1,7 @@
 from django.apps import AppConfig
+from django.db.models.signals import post_migrate
+from django.core.management import call_command
+import subprocess
 
 
 class WikinewsAppConfig(AppConfig):
@@ -6,9 +9,7 @@ class WikinewsAppConfig(AppConfig):
     name = 'wikinews_app'
 
     def ready(self):
-        from django.db.models.signals import post_migrate
-        from django.core.management import call_command
-        import subprocess
+       
 
         # Path to your log file
         log_file_path = r'C:\Users\naikn\OneDrive\Desktop\Repos\WikipediaNewsArticlesAnalysis\Backend\wikinews\wikinews_app\logs\producer_logs.log'
