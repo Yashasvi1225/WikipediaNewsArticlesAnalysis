@@ -26,7 +26,7 @@ def read_parquet_files_from_last_hour(output_dir):
 
         # Filter the data to only include records from the last hour
         filtered_data = data.filter(col("window") >= one_hour_ago.strftime('%Y-%m-%d %H:%M:%S'))
-        return filtered_data
+        return data
 
     except Exception as e:
         print(f"Error reading parquet files: {e}")
