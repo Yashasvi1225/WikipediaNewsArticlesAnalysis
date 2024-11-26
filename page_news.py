@@ -34,9 +34,9 @@ class PageNews:
         base_url = f"https://newsapi.org/v2/everything?q={page}&from={date}&sortBy=publishedAt&apiKey={self.NEWS_API_KEY}"
         return base_url
 
-    def make_currentsapi_url(self,page):
-        base_url = f"https://api.currentsapi.services/v1/search?keywords={page}&language=en"
-        return ""
+    # def make_currentsapi_url(self,page):
+    #     base_url = f"https://api.currentsapi.services/v1/search?keywords={page}&language=en"
+    #     return ""
     
     def make_marketaux_url(self,page):
         base_url = f"https://api.marketaux.com/v1/news/all?symbols=TSLA%2CAMZN%2CMSFT&filter_entities=true&language=en&api_token={self.MARKET_AUX_API_KEY}"
@@ -75,7 +75,7 @@ class PageNews:
     
 
     def fetch_news_article(self, top_k=100):
-        news_api_url = self.make_newsapi_url(self.page_name, '2024-10-14')
+        news_api_url = self.make_newsapi_url(self.page_name, '2024-11-14')
         marketaux_api_url = self.make_marketaux_url(self.page_name)
         # print("Fetching data from APIs...", news_api_url, marketaux_api_url)
         api_urls = [

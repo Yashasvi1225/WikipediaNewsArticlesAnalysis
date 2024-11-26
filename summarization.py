@@ -2,9 +2,12 @@ from transformers import LEDTokenizer, LEDForConditionalGeneration
 class Summarizer:
     model_name = "allenai/led-large-16384-arxiv"
 
-    def __init__(self) -> None:
+    def __init__(self, none) -> None:
         self.tokenizer = LEDTokenizer.from_pretrained(self.model_name)
+        if none == False:
+            self.model = None
         self.model = LEDForConditionalGeneration.from_pretrained(self.model_name)
+
         # self.model = None
 
     def summarize_led(self, text):
