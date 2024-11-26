@@ -31,32 +31,37 @@ def get_trending_topics(request):
 def get_news_articles(request):
     keyword = request.GET.get('keyword', '')  
     summarizer = Summarizer()
+    print(keyword)
      
     try:
         if not keyword:
             return JsonResponse({'error': 'Keyword parameter is required.'}, status=400)
         
         page_news_obj = PageNews(summarizer, keyword)
-        json_pages = page_news_obj.fetch_news_article(5)
+        (urls, json_pages) = page_news_obj.fetch_news_article(5)
         json_pages_parsed = json.loads(json_pages)
-        # Example: External API request (replace with your actual API URL and key)
-        # response = requests.get(
-        #     "https://newsapi.org/v2/everything",
-        #     params={
-        #         'q': keyword,
-        #         'apiKey': 'your_news_api_key'  # Replace with your API key
-        #     }
-        # )
 
-        # if response.status_code == 200:
-        #     articles = response.json().get('articles', [])
-        #     return JsonResponse({'keyword': keyword, 'articles': articles}, status=200)
-        # else:
-        #     return JsonResponse(
-        #         {'error': 'Failed to fetch news from external API.', 'details': response.text},
-        #         status=response.status_code
-        #     )
+        for json_page in json_pages_parsed:
+            # print(json_page)
+            print(json_page["url"])
+            # print(json_page["content"])
+            summary = page_news_obj.fetch_article_summary(json_page["url"])
 
-        return JsonResponse({'keyword': keyword, 'articles': json_pages_parsed}, status=200)
+        page_summary = page_news_obj.fetch_page_summary()
+        
+        return JsonResponse({'keyword': keyword, 'articles': json_pages_parsed, 'urls': urls, 'page_summary': page_summary}, status=200)
     except Exception as e:
         return JsonResponse({'error': 'An error occurred.', 'details': str(e)}, status=500)
+    
+
+# def get_news_summary(request):
+#     summarizer = Summarizer()
+     
+#     try:
+#         page_news_obj = PageNews(summarizer, '')
+#         (urls, json_pages) = page_news_obj.fetch_api_responses(5)
+#         json_pages_parsed = json.loads(json_pages)
+        
+#         return JsonResponse({'keyword': keyword, 'articles': json_pages_parsed, 'urls': urls}, status=200)
+#     except Exception as e:
+#         return JsonResponse({'error': 'An error occurred.', 'details': str(e)}, status=500)

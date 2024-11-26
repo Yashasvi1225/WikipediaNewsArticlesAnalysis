@@ -6,17 +6,17 @@ import json
 import logging
 
 from wikinews_app.News.content_extractor import ContentExtractor
-from wikinews_app.News.Summarizer import Summarizer
+from wikinews_app.News.APICalls import get_registered_api_urls
+# from summarization import Summarizer
+#
+# from langdetect import detect, DetectorFactory
 
-from langdetect import detect, DetectorFactory
 
 class PageNews:
     """
     Class description.
     """
     page_name = ""
-    NEWS_API_KEY = "f049190b6b744976b46acc21a25972f9"
-    MARKET_AUX_API_KEY = "TFCpiF4MR8mkme7nrql0RjS8PLsELCUtW6RsUAkD"
     articles = []
     summerizer = None
     page_summary = ""
@@ -26,39 +26,29 @@ class PageNews:
         self.content_extractor = ContentExtractor()
         self.articles = []
         if summarizer == None:
-            return "Could not find a Summerizer"
+            print("Could not find a Summerizer")
         else:
             self.summerizer = summarizer
+        print("PageNews initialized")
 
-    def make_newsapi_url(self,page, date):
-        base_url = f"https://newsapi.org/v2/everything?q={page}&sortBy=publishedAt&apiKey={self.NEWS_API_KEY}"
-        return base_url
 
-    def make_currentsapi_url(self,page):
-        base_url = f"https://api.currentsapi.services/v1/search?keywords={page}&language=en"
-        return ""
-    
-    def make_marketaux_url(self,page):
-        base_url = f"https://api.marketaux.com/v1/news/all?symbols={page}&filter_entities=true&language=en&api_token={self.MARKET_AUX_API_KEY}"
-        return base_url
 
-    
     def fetch_api_responses(api_urls):
         # Configure logging to display messages for debugging
         logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
         responses = {}
         for url in api_urls:
             try:
-                logging.info(f"Fetching data from API: {url}")
+                #logging.info(f"Fetching data from API: {url}")
                 response = requests.get(url)
                 response.raise_for_status()  # Raises an HTTPError for bad responses
                 responses[url] = response.json()
-                logging.info(f"Data fetched successfully from {url}")
+                #logging.info(f"Data fetched successfully from {url}")
             except requests.exceptions.RequestException as e:
                 logging.error(f"Failed to fetch data from {url}: {e}")
                 responses[url] = {"error": str(e)}
         return responses
-    
+
     def fetch_urls(self, data):
         urls = []
         if isinstance(data, dict):
@@ -72,44 +62,44 @@ class PageNews:
             for item in data:
                 urls.extend(self.fetch_urls(item))
         return urls
-    
 
     def fetch_news_article(self, top_k=100):
-        print("Fetching data from APIs for page name", self.page_name)
-        news_api_url = self.make_newsapi_url(self.page_name, '2024-10-14')
-        marketaux_api_url = self.make_marketaux_url(self.page_name)
-        # print("Fetching data from APIs...", news_api_url, marketaux_api_url)
-        api_urls = [
-            news_api_url,
-            marketaux_api_url
-        ]
+        # news_api_url = self.make_newsapi_url(self.page_name, '2024-11-14')
+        # marketaux_api_url = self.make_marketaux_url(self.page_name)
+        # # print("Fetching data from APIs...", news_api_url, marketaux_api_url)
+        api_urls = get_registered_api_urls()
+        print('Fetched Api urls', api_urls)
         api_response_objects = []
         for api_url in api_urls:
-            try:
-                logging.info(f"Fetching data from API: {api_url}")
-                response = requests.get(api_url)
-                response.raise_for_status()  # Raises an HTTPError for bad responses
-                api_response_objects.append(response.json())
-                print('api_response_objects', api_response_objects)
-                logging.info(f"Data fetched successfully from {api_url}")
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Failed to fetch data from {api_url}: {e}")
-                api_response_objects.append({"error": str(e)})
+             try:
+        #         logging.info(f"Fetching data from API: {api_url}")
+                 response = api_url.get_news(self.page_name)
+                 api_response_objects.extend(response)
+        #         # response.raise_for_status()  # Raises an HTTPError for bad responses
+        #         # api_response_objects.append(response.json())
+        #         # logging.info(f"Data fetched successfully from {api_url}")
+             except requests.exceptions.RequestException as e:
+                 print(e)
+        #         # logging.error(f"Failed to fetch data from {api_url}: {e}")
+        #         # api_response_objects.append({"error": str(e)})
 
+        # print(f'number of api response objects',len(api_response_objects))
         urls = self.fetch_urls(api_response_objects)
+        print('fetched urls', urls)
         self.articles = [
             {
                 "url": url,
                 "title": self.content_extractor.fetch_content(url)[0],
                 "content": self.content_extractor.fetch_content(url)[1]
-            } 
+            }
             for url in urls[:top_k]
+            if (content := self.content_extractor.fetch_content(url)) is not None
         ]
-       # print("Fetched data from APIs...")
-        print(self.articles)
+        # print("Fetched data from APIs...")
+        # print(self.articles)
+        print("top k", top_k)
+        return (urls[:top_k], json.dumps(api_response_objects[:top_k], indent=2))
 
-        return json.dumps(api_response_objects, indent=2) 
-    
     def fetch_article_summary(self, url):
         # Assuming 'articles' is your JSON array of articles
         selected_article = next((article for article in self.articles if article['url'] == url), None)
@@ -118,7 +108,7 @@ class PageNews:
             url = selected_article['url']
             title = selected_article['title']
             content = selected_article['content']
-            
+
             # generate summary
             summary = self.summerizer.summarize_led(f"""{title} \n {content}""")
             selected_article['summary'] = summary
@@ -127,17 +117,18 @@ class PageNews:
             return "URL not present in the database. Will have to parse and summarize ad hoc."
 
     def fetch_page_summary(self):
+        print("Fetching page summary...", self.page_summary)
         if self.page_summary != "":
             return self.page_summary
         else:
+            print("Joining summaries...")
             # Join all summaries into a single string
-            joined_summary = "\n".join(article['summary'] for article in self.articles)
+            print("len summaries", len(self.articles))
+            for article in self.articles:
+                print("Summary: ", article['summary'])  # Print the summary of each article['summary']
+            
+            joined_summary = "\n".join(str(article.get('summary', '')) for article in self.articles)
+
+            print("Summaries joined...")
             self.page_summary = self.summerizer.summarize_led(joined_summary)
             return self.page_summary
-
-
-
-
-
-
-
