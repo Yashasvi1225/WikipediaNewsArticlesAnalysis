@@ -19,10 +19,10 @@ def get_trending_topics(request):
     top_topics = get_top_trending_topics(data)
 
     # Convert the top topics to a list of dictionaries
-    topics_list = top_topics.select("page_title", "decayed_avg", "avg_view_count").collect()
+    topics_list = top_topics.select("page_title", "decayed_avg", "total_pageviews").collect()
 
     # Prepare the response as a list of dictionaries
-    trending_topics = [{"page_title": row['page_title'], "decayed_avg": row['decayed_avg'], "view_count": row['avg_view_count']} for row in topics_list]
+    trending_topics = [{"page_title": row['page_title'], "decayed_avg": row['decayed_avg'], "view_count": row['total_pageviews']} for row in topics_list]
 
     # Return the top 10 topics as a JSON response
     return JsonResponse({"trending_topics": trending_topics}, safe=False)

@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, unix_timestamp,to_timestamp
 from datetime import datetime, timedelta
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
 import pytz
 
 # Path to the directory where the Parquet files are stored
@@ -36,7 +38,26 @@ def read_parquet_files_from_last_hour(output_dir):
 def get_top_trending_topics(data):
     try:
         # Sort by the 'decayed_avg' (or 'total_weight') in descending order and get the top 10 topics
-        top_topics = data.orderBy(col("decayed_avg").desc()).limit(10)
+        window_spec = Window.partitionBy("page_title").orderBy(F.col("window").desc())
+
+        # Step 2: Add a column to identify the most recent record in each group
+        data_with_rank = data.withColumn("rank", F.row_number().over(window_spec))
+
+        # Step 3: Filter to keep only the most recent record per page_title
+        most_recent = data_with_rank.filter(F.col("rank") == 1)
+
+        # Step 4: Aggregate to sum the pageviews and keep the most recent decayed_avg
+        top_topics = (
+            most_recent.groupBy("page_title")
+            .agg(
+                F.sum("avg_view_count").alias("total_pageviews"),  # Sum pageviews
+                F.first("decayed_avg").alias("decayed_avg")  # Most recent decayed_avg
+            )
+            .filter(F.col("total_pageviews") > 1) 
+            .orderBy(F.col("decayed_avg").desc())  # Sort by decayed_avg
+            .limit(100)  # Keep the top 10 results
+        )
+
         return top_topics
     except Exception as e:
         print(f"Error processing trending topics: {e}")
